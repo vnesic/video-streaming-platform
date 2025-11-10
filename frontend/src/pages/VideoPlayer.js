@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { videoAPI } from '../services/api';
 import toast from 'react-hot-toast';
@@ -14,19 +14,13 @@ const VideoPlayer = () => {
   const [progress, setProgress] = useState(0);
   const playerRef = useRef(null);
 
-  useEffect(() => {
-    fetchVideoDetails();
-  }, [id]);
-
-  const fetchVideoDetails = async () => {
+  const fetchVideoDetails = useCallback(async () => {
     try {
       setLoading(true);
       
-      // Get video details
       const videoResponse = await videoAPI.getVideoById(id);
       setVideo(videoResponse.data.data);
 
-      // Get playback URL
       const playbackResponse = await videoAPI.getPlaybackUrl(id);
       setPlaybackUrl(playbackResponse.data.data.playbackUrl);
       
@@ -47,7 +41,11 @@ const VideoPlayer = () => {
       
       setLoading(false);
     }
-  };
+  }, [id, navigate]);
+
+  useEffect(() => {
+    fetchVideoDetails();
+  }, [fetchVideoDetails]);
 
   const handleProgress = (state) => {
     setProgress(state.playedSeconds);
@@ -91,7 +89,6 @@ const VideoPlayer = () => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      {/* Video Player */}
       <div className="bg-black rounded-lg overflow-hidden mb-6">
         <ReactPlayer
           ref={playerRef}
@@ -113,7 +110,6 @@ const VideoPlayer = () => {
         />
       </div>
 
-      {/* Video Info */}
       <div className="bg-gray-800 rounded-lg p-6">
         <div className="flex items-start justify-between mb-4">
           <div>
@@ -135,7 +131,6 @@ const VideoPlayer = () => {
         <p className="text-gray-300 leading-relaxed">{video?.description}</p>
       </div>
 
-      {/* Back Button */}
       <div className="mt-6">
         <Link
           to="/"

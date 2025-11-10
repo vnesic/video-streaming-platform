@@ -9,11 +9,13 @@ const Subscription = () => {
   const [currentSubscription, setCurrentSubscription] = useState(null);
   const [loading, setLoading] = useState(true);
   const [processingPlan, setProcessingPlan] = useState(null);
+  const [stripeConfigured, setStripeConfigured] = useState(true);
   const navigate = useNavigate();
-  const { user, refreshUser } = useAuth();
+  const { refreshUser } = useAuth();
 
   useEffect(() => {
     fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchData = async () => {
@@ -25,6 +27,11 @@ const Subscription = () => {
 
       setPlans(plansResponse.data.data);
       setCurrentSubscription(subscriptionResponse.data.data);
+      
+      if (plansResponse.data.data[0]?.demo) {
+        setStripeConfigured(false);
+      }
+      
       setLoading(false);
     } catch (error) {
       toast.error('Failed to load subscription data');
@@ -38,10 +45,19 @@ const Subscription = () => {
       
       const response = await subscriptionAPI.createCheckout(planId);
       
-      // Redirect to Stripe Checkout
       window.location.href = response.data.data.url;
     } catch (error) {
-      toast.error('Failed to start checkout process');
+      if (error.response?.data?.code === 'STRIPE_NOT_CONFIGURED') {
+        toast.success('You can already watch all videos without a subscription during testing!', {
+          duration: 5000,
+          icon: '🎬'
+        });
+        setTimeout(() => {
+          navigate('/');
+        }, 2000);
+      } else {
+        toast.error('Failed to start checkout process');
+      }
       setProcessingPlan(null);
     }
   };
@@ -76,9 +92,16 @@ const Subscription = () => {
         <p className="text-xl text-gray-400">
           Stream unlimited videos with any plan. Cancel anytime.
         </p>
+        
+        {!stripeConfigured && (
+          <div className="mt-4 bg-blue-900/30 border border-blue-500 rounded-lg p-4 max-w-2xl mx-auto">
+            <p className="text-blue-300 text-sm">
+              <strong>🧪 Testing Mode:</strong> Stripe is not configured. All videos are accessible without subscription!
+            </p>
+          </div>
+        )}
       </div>
 
-      {/* Current Subscription */}
       {currentSubscription && (
         <div className="bg-gray-800 rounded-lg p-6 mb-8">
           <h2 className="text-2xl font-bold mb-4">Current Subscription</h2>
@@ -110,7 +133,6 @@ const Subscription = () => {
         </div>
       )}
 
-      {/* Plans */}
       <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
         {plans.map((plan) => (
           <div
@@ -136,7 +158,7 @@ const Subscription = () => {
               {plan.features.map((feature, index) => (
                 <li key={index} className="flex items-start">
                   <svg
-                    className="w-5 h-5 text-green-500 mr-2 mt-0.5"
+                    className="w-5 h-5 text-green-500 mr-2 mt-0.5 flex-shrink-0"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -171,15 +193,26 @@ const Subscription = () => {
                 ? 'Processing...'
                 : currentSubscription?.planType === plan.id && !currentSubscription?.cancelAtPeriodEnd
                 ? 'Current Plan'
-                : 'Subscribe Now'}
+                : stripeConfigured 
+                ? 'Subscribe Now' 
+                : 'View Demo (Stripe Not Configured)'}
             </button>
           </div>
         ))}
       </div>
 
       <div className="text-center mt-12 text-sm text-gray-400">
-        <p>All plans include a 30-day money-back guarantee</p>
-        <p className="mt-2">Secure payment processing by Stripe</p>
+        {stripeConfigured ? (
+          <>
+            <p>All plans include a 30-day money-back guarantee</p>
+            <p className="mt-2">Secure payment processing by Stripe</p>
+          </>
+        ) : (
+          <>
+            <p>🧪 Testing Mode: Configure Stripe in backend/.env to enable real payments</p>
+            <p className="mt-2">Set STRIPE_ENABLED=true and add your Stripe API keys</p>
+          </>
+        )}
       </div>
     </div>
   );

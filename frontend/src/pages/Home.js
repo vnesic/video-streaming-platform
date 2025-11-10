@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { videoAPI } from '../services/api';
 import toast from 'react-hot-toast';
@@ -10,12 +10,7 @@ const Home = () => {
   const [selectedCategory, setSelectedCategory] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
 
-  useEffect(() => {
-    fetchVideos();
-    fetchCategories();
-  }, [selectedCategory, searchQuery]);
-
-  const fetchVideos = async () => {
+  const fetchVideos = useCallback(async () => {
     try {
       setLoading(true);
       const params = {};
@@ -29,16 +24,24 @@ const Home = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedCategory, searchQuery]);
 
-  const fetchCategories = async () => {
-    try {
-      const response = await videoAPI.getCategories();
-      setCategories(response.data.data);
-    } catch (error) {
-      console.error('Failed to load categories');
-    }
-  };
+  useEffect(() => {
+    fetchVideos();
+  }, [fetchVideos]);
+
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const response = await videoAPI.getCategories();
+        setCategories(response.data.data);
+      } catch (error) {
+        console.error('Failed to load categories');
+      }
+    };
+    
+    fetchCategories();
+  }, []);
 
   const formatDuration = (seconds) => {
     const hours = Math.floor(seconds / 3600);
