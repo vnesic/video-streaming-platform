@@ -1,80 +1,74 @@
-const { Pool } = require('pg');
+// database/migrate.js
 const fs = require('fs');
 const path = require('path');
-require('dotenv').config({ path: path.join(__dirname, '../backend/.env') });
+const { Client } = require('pg');
+require('dotenv').config({ path: path.resolve(process.cwd(), '.env') });
 
-// Support both DATABASE_URL and individual variables
-let poolConfig;
-
-if (process.env.DATABASE_URL) {
-  poolConfig = {
-    connectionString: process.env.DATABASE_URL,
-    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
-  };
-} else {
-  poolConfig = {
-    host: process.env.DB_HOST || 'localhost',
-    port: parseInt(process.env.DB_PORT) || 5432,
-    database: process.env.DB_NAME || 'videostreaming',
-    user: process.env.DB_USER || 'postgres',
-    password: process.env.DB_PASSWORD || 'postgres',
-  };
+const url = process.env.DATABASE_URL;
+if (!url) {
+  console.error('❌ DATABASE_URL is missing. Export it or put it in .env');
+  process.exit(1);
 }
 
-const pool = new Pool(poolConfig);
+console.log('🔌 Database Connection');
+console.log('Attempting to connect to the database...');
+console.log('NODE_ENV =', process.env.NODE_ENV);
 
-async function runMigration() {
-  const client = await pool.connect();
-  
+const client = new Client({
+  connectionString: url,
+  ssl: { rejectUnauthorized: false },   // Railway
+});
+
+(async () => {
   try {
-    console.log('Starting database migration...');
-    
-    // Read the schema file
-    const schemaPath = path.join(__dirname, 'schema.sql');
-    const schema = fs.readFileSync(schemaPath, 'utf8');
-    
-    // Execute the schema
-    await client.query(schema);
-    
-    console.log('✓ Database schema created successfully');
-    
-    // Optional: Insert some sample data
-    await insertSampleData(client);
-    
-    console.log('✓ Migration completed successfully');
-  } catch (error) {
-    console.error('Migration failed:', error);
-    throw error;
-  } finally {
-    client.release();
-    await pool.end();
-  }
-}
+    await client.connect();
+    console.log('✅ Connected.');
 
-async function insertSampleData(client) {
-  console.log('Inserting sample data...');
-  
-  // Insert sample categories
-  await client.query(`
-    INSERT INTO categories (name, slug, description) VALUES
-    ('Action', 'action', 'High-energy action movies and shows'),
-    ('Drama', 'drama', 'Compelling dramatic content'),
-    ('Comedy', 'comedy', 'Funny and entertaining content'),
-    ('Documentary', 'documentary', 'Real-world documentaries'),
-    ('Sci-Fi', 'sci-fi', 'Science fiction content')
-    ON CONFLICT (slug) DO NOTHING
-  `);
-  
-  console.log('✓ Sample categories inserted');
-}
+    // Sanity check: which DB/user?
+    const who = await client.query('select current_database() db, current_user usr, version()');
+    console.log('Connected as:', who.rows[0]);
 
-// Run migration
-runMigration()
-  .then(() => {
-    console.log('Database is ready!');
-    process.exit(0);
-  })
-  .catch((error) => {
-    console.error('Migration error:', error);
+    const schemaPath = path.resolve(__dirname, 'schema.sql');
+    console.log('📄 Loading schema from:', schemaPath);
+    const sql = fs.readFileSync(schemaPath, 'utf8');
+
+    // Split on semicolons (rough but good enough if schema.sql is standard)
+    // Keep statements that are not empty after trim.
+    const statements = sql
+      .split(/;\s*$/m)
+      .flatMap(chunk => chunk.split(';\n'))
+      .map(s => s.trim())
+      .filter(Boolean);
+
+    console.log(`🚀 Executing ${statements.length} statements...`);
+
+    // Don’t wrap everything in one transaction: some managed DBs/commands can be picky.
+    for (let i = 0; i < statements.length; i++) {
+      const stmt = statements[i];
+      try {
+        console.log(`▶️ [${i + 1}/${statements.length}] ${stmt.slice(0, 120)}${stmt.length > 120 ? '…' : ''}`);
+        await client.query(stmt);
+      } catch (e) {
+        console.error(`❌ Failed at statement [${i + 1}]:\n${stmt}\nError:`, e.message);
+        throw e;
+      }
+    }
+
+    console.log('🎉 Schema applied successfully.');
+
+    // Verify
+    const res = await client.query(`
+      SELECT table_name
+      FROM information_schema.tables
+      WHERE table_schema='public'
+      ORDER BY table_name
+    `);
+    console.table(res.rows);
+  } catch (err) {
+    console.error('❌ Migration failed:', err);
     process.exit(1);
-  });
+  } finally {
+    await client.end().catch(() => {});
+    console.log('👋 Connection closed.');
+  }
+})();
