@@ -16,44 +16,48 @@ const PORT = process.env.PORT || 5000;
 // Security middleware
 app.use(helmet());
 
-// CORS configuration - more flexible for development
-const allowedOrigins = [
-  'https://video-streaming-platform-brown.vercel.app',
-  'https://video-streaming-platform-production.up.railway.app',
-  'http://localhost:3000',
-  'http://localhost:3001',
-  'http://127.0.0.1:3000',
-  'http://127.0.0.1:3001'
-];
-
-// Add FRONTEND_URL from environment if it exists
-if (process.env.FRONTEND_URL) {
-  allowedOrigins.push(process.env.FRONTEND_URL);
-}
-
-// In development, allow all origins
-if (process.env.NODE_ENV === 'development') {
-  app.use(cors({
-    origin: true, // Allow all origins in development
-    credentials: true,
-  }));
-} else {
-  // In production, use strict origin checking
-  app.use(cors({
-    origin: (origin, callback) => {
-      // Allow requests with no origin (like mobile apps, curl, Postman)
-      if (!origin) return callback(null, true);
-      
-      if (allowedOrigins.includes(origin)) {
-        return callback(null, true);
-      } else {
-        console.log(`CORS blocked origin: ${origin}`);
-        return callback(new Error('Not allowed by CORS'));
-      }
-    },
-    credentials: true,
-  }));
-}
+// CORS configuration - handles Vercel preview deployments
+app.use(cors({
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps, curl, Postman)
+    if (!origin) return callback(null, true);
+    
+    // In development, allow all origins
+    if (process.env.NODE_ENV === 'development') {
+      return callback(null, true);
+    }
+    
+    // Allow localhost for development
+    if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
+      return callback(null, true);
+    }
+    
+    // Allow ALL Vercel deployments (production + previews)
+    if (origin.endsWith('.vercel.app')) {
+      return callback(null, true);
+    }
+    
+    // Allow Railway deployments
+    if (origin.endsWith('.railway.app') || origin.endsWith('.up.railway.app')) {
+      return callback(null, true);
+    }
+    
+    // Allow specific production domains from environment
+    const allowedOrigins = [
+      process.env.FRONTEND_URL,
+      process.env.PRODUCTION_URL
+    ].filter(Boolean);
+    
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    
+    // Log and block
+    console.log(`CORS blocked origin: ${origin}`);
+    return callback(new Error('Not allowed by CORS'));
+  },
+  credentials: true,
+}));
 
 // Rate limiting
 const limiter = rateLimit({
@@ -144,7 +148,7 @@ const startServer = async () => {
       console.log(`✓ Server running on port ${PORT}`);
       console.log(`✓ Environment: ${process.env.NODE_ENV || 'development'}`);
       console.log(`✓ API available at http://localhost:${PORT}/api`);
-      console.log(`✓ CORS: ${process.env.NODE_ENV === 'development' ? 'Permissive (all origins)' : 'Strict'}`);
+      console.log(`✓ CORS: Allowing all *.vercel.app and *.railway.app domains`);
     });
   } catch (error) {
     console.error('Failed to start server:', error);
