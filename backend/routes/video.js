@@ -3,6 +3,7 @@ const router = express.Router();
 const videoController = require('../controllers/videoController');
 const authMiddleware = require('../middleware/auth');
 const requireSubscription = require('../middleware/subscription');
+const isAdmin = require('../middleware/admin');
 
 // Public routes
 router.get('/categories', videoController.getCategories);
@@ -20,6 +21,6 @@ router.get('/:id/play', authMiddleware, requireSubscription(), videoController.g
 router.put('/:id/progress', authMiddleware, requireSubscription(), videoController.updateWatchProgress);
 
 // Admin routes (require authentication - add admin check in production)
-router.post('/upload', authMiddleware, videoController.uploadVideo);
+router.post('/upload', authMiddleware, isAdmin, videoController.uploadVideo);
 
 module.exports = router;

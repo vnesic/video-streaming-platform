@@ -12,6 +12,7 @@ import Subscription from './pages/Subscription';
 import SubscriptionSuccess from './pages/SubscriptionSuccess';
 import Profile from './pages/Profile';
 import WatchHistory from './pages/WatchHistory';
+import AdminUpload from './pages/AdminUpload';
 
 // Components
 import Navbar from './components/Navbar';
@@ -37,7 +38,7 @@ function AppRoutes() {
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
-        
+        <Route path="/admin/upload" element={<AdminUpload />} />
         <Route
           path="/"
           element={
