@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import VideoPlayer from '../components/VideoPlayer';
+import VideoPlayer from './VideoPlayer';
 import { videoAPI } from '../services/api';
 import toast from 'react-hot-toast';
 
