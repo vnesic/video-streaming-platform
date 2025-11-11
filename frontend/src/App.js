@@ -1,9 +1,8 @@
+// src/App.js
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './context/AuthContext';
-
-// Pages
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Home from './pages/Home';
@@ -13,13 +12,8 @@ import SubscriptionSuccess from './pages/SubscriptionSuccess';
 import Profile from './pages/Profile';
 import WatchHistory from './pages/WatchHistory';
 import AdminUpload from './pages/AdminUpload';
-
-// Components
 import Navbar from './components/Navbar';
 import ProtectedRoute from './components/ProtectedRoute';
-
-import VideoList from './pages/VideoList';
-import VideoPage from './pages/VideoPage';
 
 function AppRoutes() {
   const { loading } = useAuth();
@@ -47,7 +41,6 @@ function AppRoutes() {
             </ProtectedRoute>
           }
         />
-        
         <Route
           path="/video/:id"
           element={
@@ -56,7 +49,6 @@ function AppRoutes() {
             </ProtectedRoute>
           }
         />
-        
         <Route
           path="/subscription"
           element={
@@ -65,7 +57,6 @@ function AppRoutes() {
             </ProtectedRoute>
           }
         />
-        
         <Route
           path="/subscription/success"
           element={
@@ -74,7 +65,6 @@ function AppRoutes() {
             </ProtectedRoute>
           }
         />
-        
         <Route
           path="/profile"
           element={
@@ -83,7 +73,6 @@ function AppRoutes() {
             </ProtectedRoute>
           }
         />
-        
         <Route
           path="/history"
           element={
@@ -92,7 +81,6 @@ function AppRoutes() {
             </ProtectedRoute>
           }
         />
-
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </>
