@@ -16,24 +16,44 @@ const PORT = process.env.PORT || 5000;
 // Security middleware
 app.use(helmet());
 
+// CORS configuration - more flexible for development
 const allowedOrigins = [
   'https://video-streaming-platform-brown.vercel.app',
   'https://video-streaming-platform-production.up.railway.app',
-  'http://localhost:3000' // for local testing
+  'http://localhost:3000',
+  'http://localhost:3001',
+  'http://127.0.0.1:3000',
+  'http://127.0.0.1:3001'
 ];
 
-app.use(cors({
-  origin: (origin, callback) => {
-    // Allow requests with no origin (like mobile apps, curl)
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.includes(origin)) {
-      return callback(null, true);
-    } else {
-      return callback(new Error('Not allowed by CORS'));
-    }
-  },
-  credentials: true,
-}));
+// Add FRONTEND_URL from environment if it exists
+if (process.env.FRONTEND_URL) {
+  allowedOrigins.push(process.env.FRONTEND_URL);
+}
+
+// In development, allow all origins
+if (process.env.NODE_ENV === 'development') {
+  app.use(cors({
+    origin: true, // Allow all origins in development
+    credentials: true,
+  }));
+} else {
+  // In production, use strict origin checking
+  app.use(cors({
+    origin: (origin, callback) => {
+      // Allow requests with no origin (like mobile apps, curl, Postman)
+      if (!origin) return callback(null, true);
+      
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      } else {
+        console.log(`CORS blocked origin: ${origin}`);
+        return callback(new Error('Not allowed by CORS'));
+      }
+    },
+    credentials: true,
+  }));
+}
 
 // Rate limiting
 const limiter = rateLimit({
@@ -124,6 +144,7 @@ const startServer = async () => {
       console.log(`✓ Server running on port ${PORT}`);
       console.log(`✓ Environment: ${process.env.NODE_ENV || 'development'}`);
       console.log(`✓ API available at http://localhost:${PORT}/api`);
+      console.log(`✓ CORS: ${process.env.NODE_ENV === 'development' ? 'Permissive (all origins)' : 'Strict'}`);
     });
   } catch (error) {
     console.error('Failed to start server:', error);
