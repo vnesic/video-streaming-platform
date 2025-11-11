@@ -17,6 +17,9 @@ import WatchHistory from './pages/WatchHistory';
 import Navbar from './components/Navbar';
 import ProtectedRoute from './components/ProtectedRoute';
 
+import VideoList from './pages/VideoList';
+import VideoPage from './pages/VideoPage';
+
 function AppRoutes() {
   const { loading } = useAuth();
 

@@ -1,7 +1,9 @@
+
 import axios from 'axios';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
+// Create axios instance
 const api = axios.create({
   baseURL: API_URL,
   headers: {
@@ -9,7 +11,7 @@ const api = axios.create({
   },
 });
 
-// Add auth token to requests
+// Add token to requests
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
@@ -19,18 +21,6 @@ api.interceptors.request.use(
     return config;
   },
   (error) => {
-    return Promise.reject(error);
-  }
-);
-
-// Handle response errors
-api.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      localStorage.removeItem('token');
-      window.location.href = '/login';
-    }
     return Promise.reject(error);
   }
 );
@@ -46,19 +36,31 @@ export const authAPI = {
 export const subscriptionAPI = {
   getPlans: () => api.get('/subscription/plans'),
   createCheckout: (planId) => api.post('/subscription/checkout', { planId }),
-  getSubscription: () => api.get('/subscription/current'),
+  getSubscription: () => api.get('/subscription'),
   cancelSubscription: () => api.post('/subscription/cancel'),
 };
 
-// Video API
+// Video API (NEW - Add these to your file)
 export const videoAPI = {
+  // Get all videos with optional filters
   getVideos: (params) => api.get('/videos', { params }),
-  getVideoById: (id) => api.get(`/videos/${id}`),
+  
+  // Get single video details
+  getVideo: (id) => api.get(`/videos/${id}`),
+  
+  // Get playback URL (requires subscription)
   getPlaybackUrl: (id) => api.get(`/videos/${id}/play`),
-  getWatchHistory: () => api.get('/videos/history'),
-  updateProgress: (id, progress, completed) =>
-    api.put(`/videos/${id}/progress`, { progress, completed }),
+  
+  // Update watch progress
+  updateProgress: (id, data) => api.put(`/videos/${id}/progress`, data),
+  
+  // Get user's watch history
+  getWatchHistory: (params) => api.get('/videos/history', { params }),
+  
+  // Get available categories
   getCategories: () => api.get('/videos/categories'),
+  
+  // Upload video (admin/authenticated)
   uploadVideo: (data) => api.post('/videos/upload', data),
 };
 
