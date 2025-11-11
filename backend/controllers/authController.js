@@ -2,7 +2,6 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { query, transaction } = require('../config/database');
 const Joi = require('joi');
-const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
 // Validation schemas
 const registerSchema = Joi.object({
@@ -56,21 +55,15 @@ const register = async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash(password, salt);
 
-    // Create Stripe customer
-    const stripeCustomer = await stripe.customers.create({
-      email: email,
-      name: fullName,
-      metadata: {
-        source: 'video_streaming_platform'
-      }
-    });
-
-    // Create user in database
+    // Create user in database without Stripe customer
+    // Set stripe_customer_id to a dummy value or null
+    const dummyStripeId = 'no-stripe-' + Date.now();
+    
     const result = await query(
       `INSERT INTO users (email, password_hash, full_name, stripe_customer_id)
        VALUES ($1, $2, $3, $4)
        RETURNING id, email, full_name, created_at`,
-      [email, passwordHash, fullName, stripeCustomer.id]
+      [email, passwordHash, fullName, dummyStripeId]
     );
 
     const user = result.rows[0];

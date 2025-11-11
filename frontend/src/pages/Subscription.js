@@ -9,7 +9,6 @@ const Subscription = () => {
   const [currentSubscription, setCurrentSubscription] = useState(null);
   const [loading, setLoading] = useState(true);
   const [processingPlan, setProcessingPlan] = useState(null);
-  const [stripeConfigured, setStripeConfigured] = useState(true);
   const navigate = useNavigate();
   const { refreshUser } = useAuth();
 
@@ -27,11 +26,6 @@ const Subscription = () => {
 
       setPlans(plansResponse.data.data);
       setCurrentSubscription(subscriptionResponse.data.data);
-      
-      if (plansResponse.data.data[0]?.demo) {
-        setStripeConfigured(false);
-      }
-      
       setLoading(false);
     } catch (error) {
       toast.error('Failed to load subscription data');
@@ -45,19 +39,24 @@ const Subscription = () => {
       
       const response = await subscriptionAPI.createCheckout(planId);
       
-      window.location.href = response.data.data.url;
-    } catch (error) {
-      if (error.response?.data?.code === 'STRIPE_NOT_CONFIGURED') {
-        toast.success('You can already watch all videos without a subscription during testing!', {
-          duration: 5000,
-          icon: '🎬'
+      if (response.data.success) {
+        toast.success('Subscription activated successfully! 🎉', {
+          duration: 4000
         });
+        
+        // Refresh data
+        await fetchData();
+        await refreshUser();
+        
+        // Navigate to home after a short delay
         setTimeout(() => {
           navigate('/');
         }, 2000);
-      } else {
-        toast.error('Failed to start checkout process');
       }
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to activate subscription');
+      setProcessingPlan(null);
+    } finally {
       setProcessingPlan(null);
     }
   };
@@ -93,13 +92,11 @@ const Subscription = () => {
           Stream unlimited videos with any plan. Cancel anytime.
         </p>
         
-        {!stripeConfigured && (
-          <div className="mt-4 bg-blue-900/30 border border-blue-500 rounded-lg p-4 max-w-2xl mx-auto">
-            <p className="text-blue-300 text-sm">
-              <strong>🧪 Testing Mode:</strong> Stripe is not configured. All videos are accessible without subscription!
-            </p>
-          </div>
-        )}
+        <div className="mt-4 bg-blue-900/30 border border-blue-500 rounded-lg p-4 max-w-2xl mx-auto">
+          <p className="text-blue-300 text-sm">
+            <strong>ℹ️ No Payment Required:</strong> Subscriptions are activated instantly without payment processing.
+          </p>
+        </div>
       </div>
 
       {currentSubscription && (
@@ -190,29 +187,18 @@ const Subscription = () => {
               }`}
             >
               {processingPlan === plan.id
-                ? 'Processing...'
+                ? 'Activating...'
                 : currentSubscription?.planType === plan.id && !currentSubscription?.cancelAtPeriodEnd
                 ? 'Current Plan'
-                : stripeConfigured 
-                ? 'Subscribe Now' 
-                : 'View Demo (Stripe Not Configured)'}
+                : 'Activate Now (No Payment)'}
             </button>
           </div>
         ))}
       </div>
 
       <div className="text-center mt-12 text-sm text-gray-400">
-        {stripeConfigured ? (
-          <>
-            <p>All plans include a 30-day money-back guarantee</p>
-            <p className="mt-2">Secure payment processing by Stripe</p>
-          </>
-        ) : (
-          <>
-            <p>🧪 Testing Mode: Configure Stripe in backend/.env to enable real payments</p>
-            <p className="mt-2">Set STRIPE_ENABLED=true and add your Stripe API keys</p>
-          </>
-        )}
+        <p>💡 Stripe payment processing has been removed</p>
+        <p className="mt-2">Subscriptions are managed directly in the database</p>
       </div>
     </div>
   );
